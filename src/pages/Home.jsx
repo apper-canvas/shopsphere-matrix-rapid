@@ -38,6 +38,7 @@ function Home({ addToCart }) {
       try {
         setLoading(true);
         const data = await fetchDestinations();
+        // We could filter by user ID here for personalized content
         
         // Transform the destination data to match the product structure
         const transformedData = data.map(destination => ({
@@ -54,9 +55,14 @@ function Home({ addToCart }) {
         setFilteredProducts(transformedData);
         setError(null);
       } catch (err) {
-        console.error("Failed to fetch destinations:", err);
-        setError("Could not load products. Please try again later.");
-        toast.error("Failed to load products. Please try again.");
+        console.error("Error fetching destinations:", err);
+        if (err.message) {
+          setError(err.message);
+          toast.error(err.message);
+        } else {
+          setError("Could not load destinations. Please try again later.");
+          toast.error("Failed to load destinations. Please try again.");
+        }
       } finally {
         setLoading(false);
       }

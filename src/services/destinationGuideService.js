@@ -3,7 +3,7 @@
  */
 
 // Table name from the provided Tables & Fields JSON
-const TABLE_NAME = 'destination_guide';
+const TABLE_NAME = 'destination_guide1';
 
 /**
  * Fetch destination guides with optional filtering

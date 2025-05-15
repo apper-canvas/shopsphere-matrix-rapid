@@ -34,6 +34,7 @@ function MainFeature({ addToCart }) {
         const data = await fetchDestinations({
           orderBy: [{ field: "rating", direction: "desc" }],
           pagingInfo: { limit: 3 }
+          // Filter by authenticated user if needed for personalization
         });
         
         // Transform destinations to match the featured products format
@@ -75,9 +76,14 @@ function MainFeature({ addToCart }) {
         setFeaturedProducts(transformedData);
         setError(null);
       } catch (err) {
-        console.error("Failed to fetch featured destinations:", err);
-        setError("Could not load featured destinations");
-        toast.error("Failed to load featured products");
+        console.error("Error fetching featured destinations:", err);
+        if (err.message) {
+          setError(err.message);
+          toast.error(err.message);
+        } else {
+          setError("Could not load featured destinations. Please try again later.");
+          toast.error("Failed to load featured destinations. Please try again.");
+        }
       } finally {
         setLoading(false);
       }

@@ -3,7 +3,7 @@
  */
 
 // Table name from the provided Tables & Fields JSON
-const TABLE_NAME = 'trip_plan';
+const TABLE_NAME = 'trip_plan1';
 
 /**
  * Fetch trip plans with optional filtering

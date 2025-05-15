@@ -3,7 +3,7 @@
  */
 
 // Table name from the provided Tables & Fields JSON
-const TABLE_NAME = 'flight_booking';
+const TABLE_NAME = 'flight_booking1';
 
 /**
  * Fetch flight bookings with optional filtering
