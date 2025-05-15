@@ -1,89 +1,17 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { toast } from 'react-toastify';
 import getIcon from '../utils/iconUtils';
 import MainFeature from '../components/MainFeature';
+import { fetchDestinations } from '../services/destinationService';
+import { useSelector } from 'react-redux';
 
 // Icon declarations
 const SearchIcon = getIcon('Search');
 const FilterIcon = getIcon('SlidersHorizontal');
 const StarIcon = getIcon('Star');
 const StarFilledIcon = getIcon('StarHalf');
-
-// Sample product data for demonstration purposes
-const DEMO_PRODUCTS = [
-  {
-    id: 1,
-    name: "Premium Wireless Headphones",
-    price: 129.99,
-    image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
-    rating: 4.5,
-    category: "electronics",
-    description: "Premium noise-cancelling wireless headphones with crystal clear sound quality and 20-hour battery life."
-  },
-  {
-    id: 2,
-    name: "Designer Watch Collection",
-    price: 249.99,
-    image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
-    rating: 4.8,
-    category: "accessories",
-    description: "Elegant designer timepiece with premium materials and Swiss movement. Water-resistant up to 50m."
-  },
-  {
-    id: 3,
-    name: "Smart Home Speaker",
-    price: 89.99,
-    image: "https://images.unsplash.com/photo-1589003077984-894e133dabab?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
-    rating: 4.2,
-    category: "electronics",
-    description: "Voice-controlled smart speaker with integrated virtual assistant. Connect to your smart home devices."
-  },
-  {
-    id: 4,
-    name: "Organic Cotton T-Shirt",
-    price: 34.99,
-    image: "https://images.unsplash.com/photo-1581655353564-df123a1eb820?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
-    rating: 4.0,
-    category: "clothing",
-    description: "Sustainable, soft organic cotton t-shirt. Ethically made with eco-friendly dyes. Available in multiple colors."
-  },
-  {
-    id: 5,
-    name: "Leather Crossbody Bag",
-    price: 79.99,
-    image: "https://images.unsplash.com/photo-1590874103328-eac38a683ce7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
-    rating: 4.6,
-    category: "accessories",
-    description: "Handcrafted genuine leather crossbody bag with adjustable strap and multiple compartments."
-  },
-  {
-    id: 6,
-    name: "Bluetooth Fitness Tracker",
-    price: 59.99,
-    image: "https://images.unsplash.com/photo-1576243345690-4e4b79b63288?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
-    rating: 4.3,
-    category: "electronics",
-    description: "Waterproof fitness tracker with heart rate monitoring, sleep tracking, and smartphone notifications."
-  },
-  {
-    id: 7,
-    name: "Ceramic Coffee Mug Set",
-    price: 29.99,
-    image: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
-    rating: 4.7,
-    category: "home",
-    description: "Set of 4 handmade ceramic coffee mugs. Microwave and dishwasher safe with artistic glazed finish."
-  },
-  {
-    id: 8,
-    name: "Ultra HD Smartphone",
-    price: 699.99,
-    image: "https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
-    rating: 4.9,
-    category: "electronics",
-    description: "Latest smartphone with 6.7-inch Ultra HD display, advanced camera system, and all-day battery life."
-  }
-];
+const LoadingIcon = getIcon('Loader');
 
 // Available categories for filtering
 const CATEGORIES = [
@@ -95,11 +23,48 @@ const CATEGORIES = [
 ];
 
 function Home({ addToCart }) {
-  const [products, setProducts] = useState(DEMO_PRODUCTS);
-  const [filteredProducts, setFilteredProducts] = useState(DEMO_PRODUCTS);
+  const isAuthenticated = useSelector((state) => state.user.isAuthenticated);
+  const [products, setProducts] = useState([]);
+  const [filteredProducts, setFilteredProducts] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
   const [sortBy, setSortBy] = useState('featured');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  // Fetch destinations from the database
+  useEffect(() => {
+    const loadDestinations = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchDestinations();
+        
+        // Transform the destination data to match the product structure
+        const transformedData = data.map(destination => ({
+          id: destination.Id,
+          name: destination.Name,
+          price: 199.99, // Example price - in a real app, this would come from the data
+          image: destination.imageUrl || "https://images.unsplash.com/photo-1500835556837-99ac94a94552",
+          rating: destination.rating || 4.5,
+          category: "travel",
+          description: destination.description || "Explore this amazing destination"
+        }));
+        
+        setProducts(transformedData);
+        setFilteredProducts(transformedData);
+        setError(null);
+      } catch (err) {
+        console.error("Failed to fetch destinations:", err);
+        setError("Could not load products. Please try again later.");
+        toast.error("Failed to load products. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadDestinations();
+  }, []);
+  
   const [showFilters, setShowFilters] = useState(false);
   const [priceRange, setPriceRange] = useState([0, 1000]);
   
@@ -170,6 +135,9 @@ function Home({ addToCart }) {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {!isAuthenticated && (
+        <div className="mb-4 p-4 bg-yellow-100 text-yellow-800 rounded-lg">Please log in to access all features.</div>
+      )}
       {/* Hero Section */}
       <section className="mb-12">
         <div className="rounded-3xl overflow-hidden relative bg-gradient-to-r from-primary-dark to-secondary-dark">
@@ -313,7 +281,20 @@ function Home({ addToCart }) {
         
         {/* Product Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredProducts.length > 0 ? (
+          {loading ? (
+            <div className="col-span-full flex justify-center items-center py-20">
+              <LoadingIcon className="w-10 h-10 text-primary animate-spin" />
+              <span className="ml-3 text-lg">Loading products...</span>
+            </div>
+          ) : error ? (
+            <div className="col-span-full text-center py-12">
+              <div className="text-red-500 mb-4">
+                {getIcon('AlertCircle')({ className: "w-12 h-12 mx-auto" })}
+              </div>
+              <h3 className="text-xl font-medium mb-2">Error loading products</h3>
+              <p className="text-surface-600 dark:text-surface-400">{error}</p>
+            </div>
+          ) : filteredProducts.length > 0 ? (
             filteredProducts.map(product => (
               <motion.div
                 key={product.id}

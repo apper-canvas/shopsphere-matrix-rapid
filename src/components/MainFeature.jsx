@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'react-toastify';
 import getIcon from '../utils/iconUtils';
+import { fetchDestinations } from '../services/destinationService';
 
 // Icon declarations
 const ShoppingBagIcon = getIcon('ShoppingBag');
@@ -11,77 +13,10 @@ const ArrowLeftIcon = getIcon('ArrowLeft');
 const ArrowRightIcon = getIcon('ArrowRight');
 const ZoomInIcon = getIcon('ZoomIn');
 
-// Featured products for the showcase
-const FEATURED_PRODUCTS = [
-  {
-    id: 101,
-    name: "Modern Leather Crossbody Bag",
-    description: "Luxurious genuine leather crossbody bag with adjustable strap and gold-tone hardware. Features multiple compartments for organization and a sleek minimalist design.",
-    price: 149.99,
-    colors: ["#8B4513", "#000000", "#F5F5DC"],
-    sizes: ["Small", "Medium", "Large"],
-    images: [
-      "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
-      "https://images.unsplash.com/photo-1591561954557-26941169b49e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
-      "https://images.unsplash.com/photo-1566150905458-1bf1fc113f0d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
-    ],
-    features: [
-      "100% genuine leather",
-      "Adjustable shoulder strap",
-      "Multiple interior pockets",
-      "Gold-tone hardware",
-      "Zipper closure"
-    ],
-    rating: 4.8,
-    reviewCount: 124
-  },
-  {
-    id: 102,
-    name: "Smart Fitness Tracker Watch",
-    description: "Advanced fitness tracker with heart rate monitoring, sleep analysis, and smartphone notifications. Waterproof design with a vibrant color display and 7-day battery life.",
-    price: 99.99,
-    colors: ["#000000", "#1E90FF", "#FF4500"],
-    sizes: ["One Size"],
-    images: [
-      "https://images.unsplash.com/photo-1579586337278-3befd40fd17a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
-      "https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
-      "https://images.unsplash.com/photo-1559311648-d9ef4f9bc471?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
-    ],
-    features: [
-      "24/7 heart rate monitoring",
-      "Sleep tracking",
-      "Activity tracking with 15+ sport modes",
-      "Water-resistant up to 50m",
-      "Up to 7 days battery life"
-    ],
-    rating: 4.6,
-    reviewCount: 253
-  },
-  {
-    id: 103,
-    name: "Premium Wireless Noise-Cancelling Headphones",
-    description: "Studio-quality sound with advanced active noise cancellation technology. Features premium materials, cushioned ear cups, and up to 30 hours of battery life.",
-    price: 249.99,
-    colors: ["#000000", "#FFFFFF", "#708090"],
-    sizes: ["One Size"],
-    images: [
-      "https://images.unsplash.com/photo-1546435770-a3e736e9ae14?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
-      "https://images.unsplash.com/photo-1577174881658-0f30ed549adc?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
-      "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
-    ],
-    features: [
-      "Active noise cancellation",
-      "High-resolution audio",
-      "30 hours battery life",
-      "Quick charge (5 mins = 3 hours playback)",
-      "Memory foam ear cushions"
-    ],
-    rating: 4.9,
-    reviewCount: 412
-  }
-];
-
 function MainFeature({ addToCart }) {
+  const [featuredProducts, setFeaturedProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [currentProductIndex, setCurrentProductIndex] = useState(0);
   const [selectedColor, setSelectedColor] = useState(0);
   const [selectedSize, setSelectedSize] = useState(0);
@@ -90,9 +25,80 @@ function MainFeature({ addToCart }) {
   const [isAddedToCart, setIsAddedToCart] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
   const [zoomPosition, setZoomPosition] = useState({ x: 0, y: 0 });
+
+  // Fetch featured destinations from the database
+  useEffect(() => {
+    const fetchFeaturedDestinations = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchDestinations({
+          orderBy: [{ field: "rating", direction: "desc" }],
+          pagingInfo: { limit: 3 }
+        });
+        
+        // Transform destinations to match the featured products format
+        const transformedData = data.map(destination => {
+          // Create a basic colors array if not present
+          const colors = ["#4B5563", "#1E40AF", "#9D174D"];
+          
+          // Create sizes array
+          const sizes = ["Small Group", "Private", "Family"];
+          
+          // Create features array from tags or set defaults
+          const tags = destination.tags ? destination.tags.split(',') : [];
+          const features = tags.length > 0 ? 
+            tags.slice(0, 5) : 
+            ["Guided tours available", "Photo opportunities", "Local experiences", "Authentic cuisine", "Cultural immersion"];
+          
+          // Handle images - use imageUrl if available or fallback to defaults
+          const mainImage = destination.imageUrl || "https://images.unsplash.com/photo-1500835556837-99ac94a94552";
+          const images = [
+            mainImage,
+            "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1",
+            "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4"
+          ];
+          
+          return {
+            id: destination.Id,
+            name: destination.Name || `Destination ${destination.Id}`,
+            description: destination.description || "Experience this amazing destination with stunning views and cultural experiences.",
+            price: 199.99, // Example price point for travel packages
+            colors,
+            sizes,
+            images,
+            features,
+            rating: destination.rating || 4.7,
+            reviewCount: destination.reviewCount || 120
+          };
+        });
+        
+        setFeaturedProducts(transformedData);
+        setError(null);
+      } catch (err) {
+        console.error("Failed to fetch featured destinations:", err);
+        setError("Could not load featured destinations");
+        toast.error("Failed to load featured products");
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchFeaturedDestinations();
+  }, []);
   
   // Get current product
-  const currentProduct = FEATURED_PRODUCTS[currentProductIndex];
+  const currentProduct = featuredProducts[currentProductIndex] || {
+    id: 0,
+    name: "Loading...",
+    description: "Please wait while we load the featured products.",
+    price: 0,
+    colors: ["#000000"],
+    sizes: ["One Size"],
+    images: ["https://images.unsplash.com/photo-1500835556837-99ac94a94552"],
+    features: ["Loading features..."],
+    rating: 5.0,
+    reviewCount: 0
+  };
   
   // Reset selections when product changes
   useEffect(() => {
@@ -119,13 +125,13 @@ function MainFeature({ addToCart }) {
   // Handle next/prev product
   const goToNextProduct = () => {
     setCurrentProductIndex((prevIndex) => 
-      prevIndex === FEATURED_PRODUCTS.length - 1 ? 0 : prevIndex + 1
+      prevIndex === (featuredProducts.length - 1) ? 0 : prevIndex + 1
     );
   };
   
   const goToPrevProduct = () => {
     setCurrentProductIndex((prevIndex) => 
-      prevIndex === 0 ? FEATURED_PRODUCTS.length - 1 : prevIndex - 1
+      prevIndex === 0 ? (featuredProducts.length - 1) : prevIndex - 1
     );
   };
   
@@ -165,6 +171,15 @@ function MainFeature({ addToCart }) {
 
   return (
     <section className="mt-16">
+      {loading && (
+        <div className="flex justify-center items-center py-20">
+          {getIcon('Loader')({ className: "w-10 h-10 text-primary animate-spin" })}
+          <span className="ml-3">Loading featured products...</span>
+        </div>
+      )}
+      
+      {error && <div className="p-4 bg-red-100 text-red-800 rounded-lg mb-4">{error}</div>}
+      
       <div className="mb-8">
         <h2 className="text-2xl md:text-3xl font-bold mb-2">Featured Collection</h2>
         <p className="text-surface-600 dark:text-surface-400">
@@ -172,7 +187,7 @@ function MainFeature({ addToCart }) {
         </p>
       </div>
       
-      <div className="bg-white dark:bg-surface-800 rounded-3xl shadow-soft dark:shadow-neu-dark overflow-hidden">
+      {!loading && !error && featuredProducts.length > 0 && <div className="bg-white dark:bg-surface-800 rounded-3xl shadow-soft dark:shadow-neu-dark overflow-hidden">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Product Images */}
           <div className="p-6 lg:p-8">
@@ -423,7 +438,7 @@ function MainFeature({ addToCart }) {
             </AnimatePresence>
           </div>
         </div>
-      </div>
+      </div>}
     </section>
   );
 }
